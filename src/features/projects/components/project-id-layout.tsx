@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { Navbar } from "./Navbar";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
+import { Navbar } from "./navbar";
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 800;
 const DEFAULT_CONVERSATION_SIDEBAR_WIDTH = 400;
