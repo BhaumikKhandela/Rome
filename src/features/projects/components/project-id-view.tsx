@@ -77,14 +77,6 @@ export const ProjectIdView = ({ projectId }: { projectId: Id<"projects"> }) => {
             </Allotment.Pane>
          </Allotment>
         </div>
-        <div
-          className={cn(
-            "absolute inset-0",
-            activeView === "editor" ? "visible" : "invisible",
-          )}
-        >
-          <div>Preview</div>
-        </div>
       </div>
     </div>
   );
