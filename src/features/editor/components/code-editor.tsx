@@ -1,34 +1,46 @@
-import { useEffect, useRef } from "react";
-import { basicSetup, EditorView } from "codemirror";
-import { javascript } from "@codemirror/lang-javascript";
+import { useEffect, useMemo, useRef } from "react";
+import { EditorView, keymap } from "@codemirror/view";
 import { oneDark } from "@codemirror/theme-one-dark";
+import { indentWithTab } from "@codemirror/commands";
+import { indentationMarkers } from "@replit/codemirror-indentation-markers";
+import { customTheme } from "../extensions/theme";
+import { getLanguageExtension } from "../extensions/language-extensions";
+import { minimap } from "../extensions/minimap";
+import { customSetup } from "../extensions/custom-setup";
 
-export const CodeEditor = () => {
+interface Props {
+  fileName: string;
+  initialValue?: string;
+  onChange: (value: string) => void;
+}
+export const CodeEditor = ({ fileName, initialValue = "", onChange }: Props) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+
+  const languageExtension = useMemo(
+    () => getLanguageExtension(fileName),
+    [fileName],
+  );
 
   useEffect(() => {
     if (!editorRef.current) return;
     const view = new EditorView({
-      doc: `const Counter = () => {
-      const [value, setValue] = useState(0);
-
-      const onIncrease = setValue((value) => value + 1);
-      const onDecrease = setValue((value) => value - 1);
-
-      return (
-      <div>
-        <button onClick={onIncrease}>Increase</button>
-        <button onClick={onDecrease}>Decrease</button>
-        <p>{value}</p>
-      </div>
-      )
-      }`,
+      doc: initialValue,
       parent: editorRef.current,
       extensions: [
         oneDark,
-        basicSetup,
-        javascript({ typescript: true })],
+        customTheme,
+        customSetup,
+        languageExtension,
+        keymap.of([indentWithTab]),
+        minimap(),
+        indentationMarkers(),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            onChange(update.state.doc.toString());
+          }
+        }),
+      ],
     });
 
     viewRef.current = view;
@@ -36,6 +48,6 @@ export const CodeEditor = () => {
     return () => {
       view.destroy();
     };
-  }, []);
+  }, [languageExtension]);
   return <div ref={editorRef} className="size-full pl-4 bg-background" />;
 };
