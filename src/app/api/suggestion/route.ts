@@ -2,7 +2,9 @@ import { generateText, Output } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { anthropic } from "@ai-sdk/anthropic";
+import { groq } from "@ai-sdk/groq";
 import { google } from "@ai-sdk/google";
+import { auth } from "@clerk/nextjs/server";
 
 const suggestionSchema = z.object({
   suggestion: z
@@ -44,6 +46,16 @@ Your suggestion is inserted immediately after the cursor, so never suggest code 
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        { status: 401 },
+      );
+    }
     const {
       fileName,
       code,
@@ -74,7 +86,7 @@ export async function POST(request: Request) {
       .replace("{lineNumber}", linesNumber.toString());
 
     const { output } = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: groq("openai/gpt-oss-120b"),
       output: Output.object({ schema: suggestionSchema }),
       prompt,
     });
