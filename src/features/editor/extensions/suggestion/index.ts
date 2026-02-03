@@ -113,7 +113,6 @@ const createDebouncePlugin = (fileName: string) => {
         isWaitingForSuggestion = true;
 
         debounceTimer = window.setTimeout(async () => {
-          // Fake suggestion (delete this block later in stage 3)
 
           const payload = generatePayload(view, fileName);
           if (!payload) {
