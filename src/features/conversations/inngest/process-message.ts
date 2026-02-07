@@ -1,4 +1,4 @@
-import { createAgent, anthropic } from "@inngest/agent-kit";
+import { createAgent, anthropic, createNetwork } from "@inngest/agent-kit";
 import { inngest } from "@/inngest/client";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { NonRetriableError } from "inngest";
@@ -9,6 +9,14 @@ import {
   TITLE_GENERATOR_SYSTEM_PROMPT,
 } from "./constants";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
+import { createReadFilesTool } from "./tools/read-files";
+import { createListFilesTool } from "./tools/list-files";
+import { createUpdateFileTool } from "./tools/update-files";
+import { createCreateFilesTool } from "./tools/create-files";
+import { createCreateFolderTool } from "./tools/create-folder";
+import { createRenameFileTool } from "./tools/rename-file";
+import { createDeleteFilesTool } from "./tools/delete-files";
+import { createScrapeUrlsTool } from "./tools/scrape-urls";
 
 interface MessageEvent {
   messageId: Id<"messages">;
@@ -140,12 +148,79 @@ export const processMessage = inngest.createFunction(
       }
     }
 
+    // Create the coding agent with file tools
+    const codingAgent = createAgent({
+      name: "rome",
+      description: "An expert AI coding assistant",
+      system: systemPrompt,
+      model: anthropic({
+        model: "claude-opus-4-20250514",
+        defaultParameters: { temperature: 0.3, max_tokens: 16000 },
+      }),
+      tools: [
+        createListFilesTool({ internalKey, projectId }),
+        createReadFilesTool({ internalKey }),
+        createUpdateFileTool({ internalKey }),
+        createCreateFilesTool({ internalKey, projectId }),
+        createCreateFolderTool({ internalKey, projectId }),
+        createRenameFileTool({ internalKey }),
+        createDeleteFilesTool({ internalKey }),
+        createScrapeUrlsTool(),
+      ],
+    });
+
+    // Create network with single agent
+    const network = createNetwork({
+      name: "rome-network",
+      agents: [codingAgent],
+      maxIter: 20,
+      router: ({ network }) => {
+        const lastResult = network.state.results.at(-1);
+        const hasTextResponse = lastResult?.output.some(
+          (m) => m.type === "text" && m.role === "assistant",
+        );
+        const hasToolCalls = lastResult?.output.some(
+          (m) => m.type === "tool_call",
+        );
+
+        // Anthropic outputs text AND tool calls together
+        // Only stop if there's text WITHOUT tool calls (final response)
+        if (hasTextResponse && !hasToolCalls) {
+          return undefined;
+        }
+
+        return codingAgent;
+      },
+    });
+
+    // Run the agent
+    const result = await network.run(message);
+
+    // Extract the assistant's text response from the last agent result
+    const lastResult = result.state.results.at(-1);
+    const textMessage = lastResult?.output.find(
+      (m) => m.type === "text" && m.role === "assistant",
+    );
+
+    let assistantResponse =
+      "I processed your request. Let me know if you need anything else!";
+
+    if (textMessage?.type === "text") {
+      assistantResponse =
+        typeof textMessage.content === "string"
+          ? textMessage.content
+          : textMessage.content.map((c) => c.text).join("");
+    }
+
+    // Update the assistant message with the response (this also sets status to completed)
     await step.run("update-assistant-message", async () => {
       await convex.mutation(api.system.updateMessageContent, {
         internalKey,
         messageId,
-        content: "AI processed this message (TODO)",
+        content: assistantResponse,
       });
     });
+
+    return { success: true, messageId, conversationId };
   },
 );
