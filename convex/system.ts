@@ -559,8 +559,42 @@ export const getProjectFilesWithUrls = query({
     internalKey: v.string(),
     projectId: v.id("projects"),
   },
-  handler: async (ctx , args) => {
+  handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
-    
-  }
-})
+
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return await Promise.all(
+      files.map(async (file) => {
+        if (file.storageId) {
+          const url = await ctx.storage.getUrl(file.storageId);
+          return { ...file, storageUrl: url };
+        }
+        return { ...file, storageUrl: null };
+      }),
+    );
+  },
+});
+
+export const createProject = mutation({
+  args: {
+    internalKey: v.string(),
+    name: v.string(),
+    ownerId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const projectId = await ctx.db.insert("projects", {
+      name: args.name,
+      ownerId: args.ownerId,
+      updatedAt: Date.now(),
+      importStatus: "importing",
+    });
+
+    return projectId;
+  },
+});
