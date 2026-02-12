@@ -18,9 +18,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { projectId, repoName, visibility, description } =
-    requestSchema.parse(body);
+  const body = await request.json().catch(() => null);
+  if (body === null) {
+    return NextResponse.json(
+      {
+        error: "Invalid JSON Body",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const parsedSchema = requestSchema.safeParse(body);
+
+  if (!parsedSchema.success) {
+    return NextResponse.json({
+      error: "Schema mismatch",
+    },
+  {
+    status: 400
+  });
+  }
+  const { projectId, repoName, visibility, description } = parsedSchema.data;
 
   const client = await clerkClient();
   const tokens = await client.users.getUserOauthAccessToken(userId, "github");
@@ -57,7 +77,6 @@ export async function POST(request: Request) {
       visibility,
       description,
       githubToken,
-      internalKey,
     },
   });
 

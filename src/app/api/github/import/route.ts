@@ -27,10 +27,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { url } = requestSchema.parse(body);
+  const body = await request.json().catch(() => null);
+  if (body === null) {
+    return NextResponse.json(
+      {
+        error: "Invalid JSON Body",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+  const parsedSchema = requestSchema.safeParse(body);
+  if (!parsedSchema.success) {
+    return NextResponse.json(
+      {
+        error: "Schema mismatch",
+      },
+      { status: 400 },
+    );
+  }
 
-  const { owner, repo } = parseGitHubUrl(url);
+  const { url } = parsedSchema.data;
+
+  let owner: string;
+  let repo: string;
+  try {
+    ({ owner, repo } = parseGitHubUrl(url));
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Invalid GitHub URL",
+      },
+      {
+        status: 422,
+      },
+    );
+  }
 
   const client = await clerkClient();
   const tokens = await client.users.getUserOauthAccessToken(userId, "github");
@@ -64,19 +97,34 @@ export async function POST(request: Request) {
     ownerId: userId,
   });
 
-  const event = await inngest.send({
-    name: "github/import.repo",
-    data: {
-      owner,
-      repo,
-      projectId,
-      githubToken,
-    },
-  });
+  try {
+    const event = await inngest.send({
+      name: "github/import.repo",
+      data: {
+        owner,
+        repo,
+        projectId,
+        githubToken,
+      },
+    });
 
-  return NextResponse.json({
-    success: true,
-    projectId,
-    eventId: event.ids[0],
-  });
+    return NextResponse.json({
+      success: true,
+      projectId,
+      eventId: event.ids[0],
+    });
+  } catch (error) {
+    console.error("Inngest Delivery failed", error);
+
+    await convex.mutation(api.system.cleanup, { projectId, internalKey });
+
+    return NextResponse.json(
+      {
+        error: "Queue service unavailable. Please try again.",
+      },
+      {
+        status: 503,
+      },
+    );
+  }
 }
