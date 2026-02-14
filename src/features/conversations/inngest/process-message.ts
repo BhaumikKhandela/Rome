@@ -64,7 +64,6 @@ export const processMessage = inngest.createFunction(
       throw new NonRetriableError("ROME_CONVEX_INTERNAL_KEY is not configured");
     }
 
-    // TODO: Check if this is needed
     await step.sleep("wait-for-db-sync", "1s");
 
     // Get conversation for title generation check
