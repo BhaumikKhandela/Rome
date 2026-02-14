@@ -62,7 +62,7 @@ export const NewProjectDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-lg p-0">
-        <DialogHeader className="VisuallyHidden">
+        <DialogHeader className="sr-only">
           <DialogTitle>What do you want to build?</DialogTitle>
           <DialogDescription>
             Describe your project and AI will help you create it.
