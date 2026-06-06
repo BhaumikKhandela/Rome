@@ -23,13 +23,15 @@ type FileWithUrl = Doc<"files"> & {
 export const exportToGithub = inngest.createFunction(
   {
     id: "export-to-github",
+    name: "Export to GitHub",
+    triggers: [{ event: "github/export.repo" }],
     cancelOn: [
       {
         event: "github/export.cancel",
-        if: "event.data.projectId == async.data.projectId",
+        match: "data.projectId",
       },
     ],
-    onFailure: async ({ event, step }) => {
+    onFailure: async ({ event, step }: any) => {
       const internalKey = process.env.ROME_CONVEX_INTERNAL_KEY;
       if (!internalKey) return;
 
@@ -44,10 +46,7 @@ export const exportToGithub = inngest.createFunction(
       });
     },
   },
-  {
-    event: "github/export.repo",
-  },
-  async ({ event, step }) => {
+  async ({ event, step }: any) => {
     const { projectId, repoName, visibility, description, githubToken } =
       event.data as ExportToGithubEvent;
 

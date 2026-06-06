@@ -6,9 +6,12 @@ import { generateText } from "ai";
 const URL_REGEX = /https?:\/\/[^\s]+/g;
 
 export const demoGenerate = inngest.createFunction(
-  { id: "demo-generate" },
-  { event: "demo/generate" },
-  async ({ event, step }) => {
+  { 
+    id: "demo-generate",
+    name: "Demo Generate",
+    triggers: [{ event: "demo/generate" }],
+  },
+  async ({ event, step }: any) => {
     const { prompt } = event.data as { prompt: string };
     const url = (await step.run("extract-urls", async () => {
       return prompt.match(URL_REGEX) ?? [];

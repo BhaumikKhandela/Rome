@@ -19,7 +19,9 @@ interface ImportGithubRepoEvent {
 export const importGithubRepo = inngest.createFunction(
   {
     id: "import-github-repo",
-    onFailure: async ({ event, step }) => {
+    name: "Import GitHub Repository",
+    triggers: [{ event: "github/import.repo" }],
+    onFailure: async ({ event, step }: any) => {
       const internalKey = process.env.ROME_CONVEX_INTERNAL_KEY;
       if (!internalKey) return;
 
@@ -34,8 +36,7 @@ export const importGithubRepo = inngest.createFunction(
       });
     },
   },
-  { event: "github/import.repo" },
-  async ({ event, step }) => {
+  async ({ event, step }: any) => {
     const { owner, repo, projectId, githubToken } =
       event.data as ImportGithubRepoEvent;
 
@@ -81,8 +82,8 @@ export const importGithubRepo = inngest.createFunction(
     // Output: [{ path: "src"}, { path: "src/components"}, { path: "src/components/ui"}]
 
     const folders = tree.tree
-      .filter((item) => item.type === "tree" && item.path)
-      .sort((a, b) => {
+      .filter((item: any) => item.type === "tree" && item.path)
+      .sort((a: any, b: any) => {
         const aDepth = a.path ? a.path.split("/").length : 0;
         const bDepth = b.path ? b.path.split("/").length : 0;
 
@@ -121,7 +122,7 @@ export const importGithubRepo = inngest.createFunction(
 
     // Get all files (blobs) from the tree
     const allFiles = tree.tree.filter(
-      (item) => item.type === "blob" && item.path && item.sha,
+      (item: any) => item.type === "blob" && item.path && item.sha,
     );
 
     await step.run("create-files", async () => {

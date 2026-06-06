@@ -1,4 +1,4 @@
-import { createAgent, anthropic, createNetwork } from "@inngest/agent-kit";
+import { createAgent, createNetwork, openai } from "@inngest/agent-kit";
 import { inngest } from "@/inngest/client";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { NonRetriableError } from "inngest";
@@ -9,6 +9,7 @@ import {
   TITLE_GENERATOR_SYSTEM_PROMPT,
 } from "./constants";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
+
 import { createReadFilesTool } from "./tools/read-files";
 import { createListFilesTool } from "./tools/list-files";
 import { createUpdateFileTool } from "./tools/update-files";
@@ -28,13 +29,14 @@ interface MessageEvent {
 export const processMessage = inngest.createFunction(
   {
     id: "process-message",
+    name: "Process Message",
     cancelOn: [
       {
         event: "message/cancel",
-        if: "event.data.messageId == async.data.messageId",
+        match: "data.messageId",
       },
     ],
-    onFailure: async ({ event, step }) => {
+    onFailure: async ({ event, step }: any) => {
       const { messageId } = event.data.event.data as MessageEvent;
       const internalKey = process.env.ROME_CONVEX_INTERNAL_KEY;
 
@@ -50,11 +52,9 @@ export const processMessage = inngest.createFunction(
         });
       }
     },
+    triggers: [{ event: "message/sent" }],
   },
-  {
-    event: "message/sent",
-  },
-  async ({ event, step }) => {
+  async ({ event, step }: any) => {
     const { messageId, conversationId, projectId, message } =
       event.data as MessageEvent;
 
@@ -93,12 +93,12 @@ export const processMessage = inngest.createFunction(
 
     // Filter out the current processing message and empty messages
     const contextMessages = recentMessages.filter(
-      (msg) => msg._id !== messageId && msg.content.trim() !== "",
+      (msg: any) => msg._id !== messageId && msg.content.trim() !== "",
     );
 
     if (contextMessages.length > 0) {
       const historyText = contextMessages
-        .map((msg) => `${msg.role.toUpperCase}: ${msg.content}`)
+        .map((msg: any) => `${msg.role.toUpperCase}: ${msg.content}`)
         .join("\n\n");
 
       systemPrompt += `\n\n## Previous Conversation (for context only - do NOT repeat these responses):\n${historyText}\n\n## Current
@@ -114,9 +114,14 @@ export const processMessage = inngest.createFunction(
       const titleAgent = createAgent({
         name: "title-generator",
         system: TITLE_GENERATOR_SYSTEM_PROMPT,
-        model: anthropic({
-          model: "claude-3-5-haiku-20241022",
-          defaultParameters: { temperature: 0, max_tokens: 50 },
+        model: openai({
+          model: "moonshotai/kimi-k2.6",
+          baseUrl: "https://api.bluesminds.com/v1",
+          apiKey: process.env.BLUESMINDS_API_KEY,
+          defaultParameters: {
+            temperature: 0,
+            max_completion_tokens: 50,
+          },
         }),
       });
 
@@ -152,9 +157,13 @@ export const processMessage = inngest.createFunction(
       name: "rome",
       description: "An expert AI coding assistant",
       system: systemPrompt,
-      model: anthropic({
-        model: "claude-opus-4-20250514",
-        defaultParameters: { temperature: 0.3, max_tokens: 16000 },
+      model: openai({
+        model: "moonshotai/kimi-k2.6",
+        baseUrl: "https://api.bluesminds.com/v1",
+        apiKey: process.env.BLUESMINDS_API_KEY,
+        defaultParameters: {
+          temperature: 0.3,
+        },
       }),
       tools: [
         createListFilesTool({ internalKey, projectId }),

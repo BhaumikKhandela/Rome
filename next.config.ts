@@ -5,9 +5,34 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Apply headers to all routes including pages, API routes, and static assets
         source: "/:path*",
         headers: [
-          { key: "Cross-Origin-Embedded-Policy", value: "credentialless" },
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        ],
+      },
+      {
+        // Explicitly apply headers to API routes
+        source: "/api/:path*",
+        headers: [
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        ],
+      },
+      {
+        // Explicitly apply headers to static assets
+        source: "/_next/:path*",
+        headers: [
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        ],
+      },
+      {
+        // Explicitly apply headers to project preview routes
+        source: "/projects/:path*",
+        headers: [
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
         ],
       },
