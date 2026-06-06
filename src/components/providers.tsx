@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import {
   ClerkProvider,
   useAuth,
@@ -19,6 +20,22 @@ import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export const Providers = ({ children }: { children: React.ReactNode }) => {
+  const pathname = usePathname();
+  const isLanding = pathname?.startsWith("/landing");
+
+  if (isLanding) {
+    return (
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ClerkProvider>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
