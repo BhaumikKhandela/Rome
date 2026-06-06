@@ -17,11 +17,27 @@ const getWebContainer = async (): Promise<WebContainer> => {
     return webContainerInstance;
   }
 
+  // Check cross-origin isolation before booting WebContainer
+  if (typeof self !== "undefined" && !self.crossOriginIsolated) {
+    console.error(
+      "Cross-origin isolation check failed: self.crossOriginIsolated is false. " +
+      "This may prevent SharedArrayBuffer transfers. " +
+      "Ensure COEP and COOP headers are properly configured."
+    );
+  }
+
   if (!bootPromise) {
     bootPromise = WebContainer.boot({ coep: "credentialless" });
   }
 
   webContainerInstance = await bootPromise;
+
+  // Log cross-origin isolation status after boot
+  if (typeof self !== "undefined") {
+    console.log(
+      `WebContainer booted. Cross-origin isolated: ${self.crossOriginIsolated}`
+    );
+  }
 
   return webContainerInstance;
 };
